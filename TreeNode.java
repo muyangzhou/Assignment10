@@ -71,7 +71,6 @@ public class TreeNode implements Comparable<TreeNode> {
      */
 
     public int compareTo(TreeNode rhs) {
-
         return frequency - rhs.frequency;
     }
 
@@ -81,8 +80,8 @@ public class TreeNode implements Comparable<TreeNode> {
      */
     public String toString() {
         // consider values as characters for readability
-        return "(" + frequency + ", " + (char) value + " as char, " + value + " value as int)";
-        // simple format: return value + ":" + frequency;
+        // return "(" + frequency + ", " + (char) value + " as char, " + value + " value as int)";
+        return value + ":" + frequency;
     }
 
     /**

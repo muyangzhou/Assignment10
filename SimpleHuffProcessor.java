@@ -24,13 +24,13 @@ import java.io.OutputStream;
 import java.util.HashMap;
 
 public class SimpleHuffProcessor implements IHuffProcessor {
-    private final int NUM_ASCII_CHARS = 256;
-
     private IHuffViewer myViewer;
-    private PriorityQueue<TreeNode> charFreqs;
+    private PriorityQueue314<TreeNode> charFreqs;
+    private HashMap<Integer, String> codeSequences;
 
     public SimpleHuffProcessor() {
-        charFreqs = new PriorityQueue<>();
+        charFreqs = new PriorityQueue314<>();
+        codeSequences = new HashMap<>();
     }
 
     /**
@@ -55,55 +55,67 @@ public class SimpleHuffProcessor implements IHuffProcessor {
      */
     public int preprocessCompress(InputStream in, int headerFormat) throws IOException {
         BitInputStream bitIn = new BitInputStream(in);
-        int[] freqs = new int[NUM_ASCII_CHARS];
+        int[] freqs = new int[ALPH_SIZE];
         int bit = bitIn.readBits(BITS_PER_WORD);
+        int bitsInOriginal = BITS_PER_INT  * (2 + freqs.length);
 
         // find frequencies of each character
         while (bit != -1) {
+            bitsInOriginal++;
             freqs[bit]++;
             bit = bitIn.readBits(BITS_PER_WORD);
         }
 
+        bitIn.close();
+        bitsInOriginal *= BITS_PER_WORD;
+        
         // add frequencies into PQ
         for (int ch = 0; ch < freqs.length; ch++) {
             charFreqs.enqueue(new TreeNode(ch, freqs[ch]));
         }
         charFreqs.enqueue(new TreeNode(PSEUDO_EOF, 1)); // add PEOF to PQ
 
-        // System.out.println(charFreqs);
+        // System.out.println(charFreqs); // delete
 
-        // // testing
+        // // testing (delete)
         // int numCharacters = 0;
-        // for (int ch = 0; ch < freqs.length; ch++) {
-        //     numCharacters += charFreqs.remove().freq;
+        // for (int ch = 0; ch <= freqs.length; ch++) {
+        // TreeNode temp = charFreqs.dequeue();
+        // System.out.print(temp + " ");
+        // numCharacters += temp.getFrequency();
         // }
-        // System.out.println("char count by counting: " + numCharacters);
+        // System.out.println("\nchar count by counting: " + numCharacters);
         // // reset tree
         // for (int ch = 0; ch < freqs.length; ch++) {
-        //     charFreqs.add(new TreeNode(ch, freqs[ch]));
+        // charFreqs.enqueue(new TreeNode(ch, freqs[ch]));
         // }
-        
+        // charFreqs.enqueue(new TreeNode(PSEUDO_EOF, 1));
+
         // structuring completed PQ into a tree
-        while(charFreqs.size() > 1) {
+        while (charFreqs.size() > 1) {
             TreeNode n1 = charFreqs.dequeue();
             TreeNode n2 = charFreqs.dequeue();
 
-            if(n1.getFrequency() + n2.getFrequency() != 0) {
+            if (n1.getFrequency() + n2.getFrequency() != 0) {
                 charFreqs.enqueue(new TreeNode(n1, -1, n2)); // add
             }
         }
-        System.out.println(charFreqs);
-        // printTree(charFreqs.peek(), "");
+
+        // printTree(charFreqs.peek(), ""); // delete
 
         // encodes characters
-        HashMap<Integer, String> codeSequences = new HashMap<>(); // can be adapted to primitive array for efficiency if needed
         findCodes(charFreqs.peek(), codeSequences, "");
         System.out.println(codeSequences); // code sequences should be correct after PQ314 has been implemented
+        int bitsInCompressed = 0;
+        for(int character : codeSequences.keySet()) { // TODO traverse through freqs instead
+            if(character != ALPH_SIZE) {
+                bitsInCompressed += codeSequences.get(character).length() * freqs[character];
+            }
+        }
 
-        showString("Not working yet");
-        myViewer.update("Still not working");
-        throw new IOException("preprocess not implemented");
-        // return 0;
+        showString((bitsInOriginal - bitsInCompressed) + " bits saved.");
+        // myViewer.update("Still not working");
+        return bitsInOriginal - bitsInCompressed;
     }
 
     // TODO delete; testing
@@ -117,7 +129,7 @@ public class SimpleHuffProcessor implements IHuffProcessor {
 
     private void findCodes(TreeNode n, HashMap<Integer, String> codes, String code) {
         if (n != null) {
-            if(n.getValue() != -1) {
+            if (n.getValue() != -1) {
                 // node contains a character and is a leaf
                 codes.put(n.getValue(), code);
             } else {
