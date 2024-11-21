@@ -26,7 +26,9 @@ import java.util.HashMap;
 public class SimpleHuffProcessor implements IHuffProcessor {
     private IHuffViewer myViewer;
     private PriorityQueue314<TreeNode> charFreqs;
+    private int[] freqs;
     private HashMap<Integer, String> codeSequences;
+    private boolean spaceSaved;
 
     public SimpleHuffProcessor() {
         charFreqs = new PriorityQueue314<>();
@@ -55,9 +57,9 @@ public class SimpleHuffProcessor implements IHuffProcessor {
      */
     public int preprocessCompress(InputStream in, int headerFormat) throws IOException {
         BitInputStream bitIn = new BitInputStream(in);
-        int[] freqs = new int[ALPH_SIZE];
+        freqs = new int[ALPH_SIZE];
         int bit = bitIn.readBits(BITS_PER_WORD);
-        int bitsInOriginal = BITS_PER_INT  * (2 + freqs.length);
+        int bitsInOriginal = 0;
 
         // find frequencies of each character
         while (bit != -1) {
@@ -68,14 +70,15 @@ public class SimpleHuffProcessor implements IHuffProcessor {
 
         bitIn.close();
         bitsInOriginal *= BITS_PER_WORD;
-        
+
         // add frequencies into PQ
         for (int ch = 0; ch < freqs.length; ch++) {
             charFreqs.enqueue(new TreeNode(ch, freqs[ch]));
         }
         charFreqs.enqueue(new TreeNode(PSEUDO_EOF, 1)); // add PEOF to PQ
 
-        // System.out.println(charFreqs); // delete
+        // System.out.println("\nqueue:");
+        // charFreqs.print(); // delete
 
         // // testing (delete)
         // int numCharacters = 0;
@@ -105,15 +108,22 @@ public class SimpleHuffProcessor implements IHuffProcessor {
 
         // encodes characters
         findCodes(charFreqs.peek(), codeSequences, "");
-        System.out.println(codeSequences); // code sequences should be correct after PQ314 has been implemented
-        int bitsInCompressed = 0;
-        for(int character : codeSequences.keySet()) { // TODO traverse through freqs instead
-            if(character != ALPH_SIZE) {
-                bitsInCompressed += codeSequences.get(character).length() * freqs[character];
+        // System.out.println(codeSequences); // code sequences should be correct after
+        // PQ314 has been implemented
+        int bitsInCompressed = BITS_PER_INT * (2 + freqs.length);
+        for (int character : codeSequences.keySet()) { // TODO traverse through freqs instead
+            if (character != ALPH_SIZE) {
+                bitsInCompressed += codeSequences.get(character).length() * freqs[character]; // 84
             }
         }
 
+        bitsInCompressed += codeSequences.get(PSEUDO_EOF).length();
+        bitsInCompressed += (BITS_PER_WORD - (bitsInCompressed % BITS_PER_WORD)) % BITS_PER_WORD;
+
         showString((bitsInOriginal - bitsInCompressed) + " bits saved.");
+        System.out.println(bitsInOriginal + " bits in original, " + bitsInCompressed + " bits in compressed");
+        System.out.println((bitsInOriginal - bitsInCompressed) + " bits saved detected in SimpleHuffProcessor");
+        spaceSaved = bitsInOriginal > bitsInCompressed;
         // myViewer.update("Still not working");
         return bitsInOriginal - bitsInCompressed;
     }
@@ -158,8 +168,55 @@ public class SimpleHuffProcessor implements IHuffProcessor {
      *                     writing to the output file.
      */
     public int compress(InputStream in, OutputStream out, boolean force) throws IOException {
-        throw new IOException("compress is not implemented");
-        // return 0;
+        if (!spaceSaved && !force) {
+            // compression results in a bigger file
+            return -1;
+        }
+
+        // System.out.println(codeSequences);
+        BitOutputStream bitsOut = new BitOutputStream(out);
+        bitsOut.writeBits(BITS_PER_INT, MAGIC_NUMBER);
+        bitsOut.writeBits(BITS_PER_INT, STORE_COUNTS);
+        int bitsWritten = BITS_PER_INT * 2;
+
+        // write data used to construct freq array (standard count format)
+        for (int character = 0; character < ALPH_SIZE; character++) {
+            bitsOut.writeBits(BITS_PER_INT, freqs[character]);
+        }
+
+        // write content
+        BitInputStream bitsIn = new BitInputStream(in);
+        int character = bitsIn.readBits(BITS_PER_WORD);
+        while (character != -1) {
+            // System.out.println("character = " + character + ", reading " + ((char)
+            // character) + " "); // delete
+            String huffCode = codeSequences.get(character);
+            for (int i = 0; i < huffCode.length(); i++) {
+                bitsOut.writeBits(1, huffCode.charAt(i) == '0' ? 0 : 1);
+                // System.out.print("" + huffCode.charAt(i));
+            }
+            bitsWritten += huffCode.length();
+            // System.out.print(" ");
+
+            character = bitsIn.readBits(BITS_PER_WORD);
+        }
+        bitsIn.close();
+
+        // write PEOF
+        String peofCode = codeSequences.get(ALPH_SIZE);
+        for (int i = 0; i < peofCode.length(); i++) {
+            bitsOut.writeBits(1, peofCode.charAt(i) == '0' ? 0 : 1);
+            // System.out.print("" + peofCode.charAt(i));
+        }
+        // System.out.println();
+        bitsWritten += peofCode.length();
+        while (bitsWritten % BITS_PER_WORD != 0) {
+            bitsWritten++;
+            bitsOut.writeBits(1, 0);
+        }
+
+        bitsOut.close();
+        return bitsWritten;
     }
 
     /**

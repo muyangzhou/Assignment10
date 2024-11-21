@@ -186,10 +186,12 @@ public class TextHuffViewer implements IHuffViewer {
      * compressed.
      */
     private void preprocess() {
+        System.out.println("called preprocess");
         showMessage("Begining preprocessing of " + myInputFile + ".");
         ByteArrayInputStream inputStream = getFastByteReader(myInputFile);
         try {
             int saved = myModel.preprocessCompress(inputStream, myHeaderFormat);
+            System.out.println(saved + " bits saved detected in TextHuffViewer");
             showMessage("save(d): " + saved + " bits");
         } catch (IOException e) {
             showError("Error / Exception while reading file for preprocessing.");
@@ -199,6 +201,7 @@ public class TextHuffViewer implements IHuffViewer {
 
     // Compress a file based on user input.
     private void compress() {
+        System.out.println("called compress");
         preprocess();
         String newName = myInputFile.getName() + HUFF_SUFFIX;
         newName = setNewFileName("compressed", newName);
