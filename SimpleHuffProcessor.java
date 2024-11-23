@@ -45,7 +45,7 @@ public class SimpleHuffProcessor implements IHuffProcessor {
      * count characters/create tree/store state so that
      * a subsequent call to compress will work. The InputStream
      * is <em>not</em> a BitInputStream, so wrap it in one as needed.
-     * 
+     *
      * @param in           is the stream which could be subsequently compressed
      * @param headerFormat a constant from IHuffProcessor that determines what kind
      *                     of
@@ -107,7 +107,7 @@ public class SimpleHuffProcessor implements IHuffProcessor {
     }
 
     /**
-     * 
+     *
      * @param freqs
      * @return the number of bits required to store this tree using standard tree
      *         format
@@ -169,7 +169,7 @@ public class SimpleHuffProcessor implements IHuffProcessor {
         // System.out.println(bitsUsed - BITS_PER_INT + " bits used to store tree");
         // printTree(charFreqs.peek(), ""); // delete
         return isTreeFormat ? bitsUsed : 0; // TODO debug: preprocess returning wrong number of bits used for standard
-                                            // count format
+        // count format
     }
 
     // TODO delete; testing
@@ -199,7 +199,7 @@ public class SimpleHuffProcessor implements IHuffProcessor {
      * storing state used by this call.
      * <br>
      * pre: <code>preprocessCompress</code> must be called before this method
-     * 
+     *
      * @param in    is the stream being compressed (NOT a BitInputStream)
      * @param out   is bound to a file/stream to which bits are written
      *              for the compressed file (not a BitOutputStream)
@@ -332,7 +332,7 @@ public class SimpleHuffProcessor implements IHuffProcessor {
     /**
      * Uncompress a previously compressed stream in, writing the
      * uncompressed bits/data to out.
-     * 
+     *
      * @param in  is the previously compressed data (not a BitInputStream)
      * @param out is the uncompressed file/stream
      * @return the number of bits written to the uncompressed file/stream
@@ -344,66 +344,80 @@ public class SimpleHuffProcessor implements IHuffProcessor {
         BitOutputStream bitsOut = new BitOutputStream(out);
         int bitsRead = 0;
 
-        // reads magic number
+        //reads magic number
         int magic = bitsIn.readBits(BITS_PER_INT);
         if (magic != MAGIC_NUMBER) {
-            // TODO throw exception or show error msg?
             throw new IOException("Invalid magic number, file format not recognized.");
         }
         bitsRead += BITS_PER_INT;
 
-        // Read header info test should be store counts
+        // read header info
         int headerFormat = bitsIn.readBits(BITS_PER_INT);
-        if (headerFormat != STORE_COUNTS) {
-            // TODO same
-            throw new IOException("Unsupported header format: " + headerFormat);
-        }
         bitsRead += BITS_PER_INT;
 
-        // read freq info
-        int[] freqs = new int[ALPH_SIZE];
-        for (int i = 0; i < ALPH_SIZE; i++) {
-            freqs[i] = bitsIn.readBits(BITS_PER_INT);
-        }
-
-        TreeNode root = rebuildHuffmanTree(freqs);
-        StringBuilder decodedContent = new StringBuilder();
-        TreeNode currentNode = root;
-        int bit;
-
-        while ((bit = bitsIn.readBits(1)) != -1) {
-            System.out.println(
-                    "Bit read: " + bit + " | Current node: " + (currentNode != null ? currentNode.getValue() : "null"));
-
-            // Traverse the Huffman tree based on the bit (0 or 1)
-            currentNode = (bit == 0) ? currentNode.getLeft() : currentNode.getRight();
-
-            System.out.println("After processing bit: " + bit + " | Current node: "
-                    + (currentNode != null ? currentNode.getValue() : "null"));
-
-            // If a leaf node reached there is a character
-            if (currentNode != null && currentNode.isLeaf()) {
-                char decodedChar = (char) currentNode.getValue();
-                decodedContent.append(decodedChar);
-
-                currentNode = root;
+        TreeNode root;
+        if (headerFormat == STORE_TREE) {
+            root = readTree(bitsIn);
+        } else { // STORE_COUNTS
+            int[] frequencies = new int[ALPH_SIZE];
+            for (int i = 0; i < ALPH_SIZE; i++) {
+                frequencies[i] = bitsIn.readBits(BITS_PER_INT);
             }
+            root = rebuildHuffmanTree(frequencies);
         }
+        int writtenBytes = 0;
+        TreeNode current = root;
+        int bit = bitsIn.readBits(1);
+        while (bit != -1) {
+            current = (bit == 0) ? current.getLeft() : current.getRight();
 
-        String pseudoEofCode = codeSequences.get(PSEUDO_EOF);
+            if (current.isLeaf()) {
+                if (current.getValue() == PSEUDO_EOF) {
+                    break;
+                }
+                bitsOut.writeBits(BITS_PER_WORD, current.getValue());
+                writtenBytes++;
+                current = root;
+            }
 
-        System.out.println("PSEUDO_EOF code: " + pseudoEofCode);
+            bit = bitsIn.readBits(1);
+        }
 
         bitsIn.close();
         bitsOut.close();
-        return 0;
+        System.out.println(writtenBytes);
+        return writtenBytes;
+    }
+
+    /**
+     * Reads a Huffman tree from the input stream
+     *
+     * @param bitIn the input stream
+     * @return the root of Huffman tree.
+     */
+    private TreeNode readTree(BitInputStream bitIn) throws IOException {
+        int bit = bitIn.readBits(1);
+        if (bit == 0) {
+            // internal node
+            TreeNode left = readTree(bitIn);
+            TreeNode right = readTree(bitIn);
+            return new TreeNode(left, -1, right);
+        } else {
+            // leaf node
+            int isPseudoEOF = bitIn.readBits(1);
+            if (isPseudoEOF == 1) {
+                return new TreeNode(PSEUDO_EOF, 1);
+            } else {
+                int value = bitIn.readBits(BITS_PER_WORD);
+                return new TreeNode(value, 1);
+            }
+        }
     }
 
     private TreeNode rebuildHuffmanTree(int[] freqs) {
         PriorityQueue314<TreeNode> pq = new PriorityQueue314<>();
 
-        // Create leaf nodes for each character and add to priority queue
-        for (int i = 0; i < ALPH_SIZE; i++) {
+        for (int i = 0; i < freqs.length; i++) {
             if (freqs[i] > 0) {
                 pq.enqueue(new TreeNode((char) i, freqs[i]));
             }
@@ -415,18 +429,11 @@ public class SimpleHuffProcessor implements IHuffProcessor {
 
         while (pq.size() > 1) {
             TreeNode left = pq.dequeue();
-            TreeNode right = pq.dequeue(); // TODO was poll before
-            System.out.println("Queue size after poll: " + pq.size());
+            TreeNode right = pq.dequeue();
 
-            TreeNode parent = new TreeNode(left, left.getFrequency() + right.getFrequency(), right);
-            pq.enqueue(parent);
-            System.out.println("Queue size after enqueue: " + pq.size());
+            pq.enqueue(new TreeNode(left, -1, right));
 
-            // System.out.println("Parent node created with frequency: " +
-            // parent.getFrequency());
         }
-
-        // root node
         return pq.dequeue();
     }
 
