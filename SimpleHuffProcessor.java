@@ -1,22 +1,20 @@
 /*  Student information for assignment:
  *
- *  On <MY|OUR> honor, <NAME1> and <NAME2), this programming assignment is <MY|OUR> own work
- *  and <I|WE> have not provided this code to any other student.
+ *  On our honor, Muyang Zhou and Olivia Wang, this programming assignment is ou4 own work
+ *  and we have not provided this code to any other student.
  *
- *  Number of slip days used:
+ *  Number of slip days used: 2
  *
  *  Student 1 (Student whose Canvas account is being used)
- *  UTEID:
- *  email address:
- *  Grader name:
+ *  UTEID: mz9939
+ *  email address: m.zhou@utexas.edu
+ *  Grader name: Diego
  *
  *  Student 2
- *  UTEID:
- *  email address:
+ *  UTEID: oyw74
+ *  email address: oliviawang@utexas.edu
  *
  */
-
-// TODO style: no bytes (only ints); method comments; test empty file; test one char file
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -24,8 +22,6 @@ import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Queue;
 import java.util.LinkedList;
-
-import javax.management.RuntimeErrorException;
 
 public class SimpleHuffProcessor implements IHuffProcessor {
     private IHuffViewer myViewer;
@@ -62,8 +58,9 @@ public class SimpleHuffProcessor implements IHuffProcessor {
      */
     public int preprocessCompress(InputStream in, int headerFormat) throws IOException {
         if (headerFormat != STORE_COUNTS && headerFormat != STORE_TREE) {
-            throw new IllegalArgumentException("Parameter headerFormat must equal "
-                    + "IHuffConstants.STORE_COUNTS or IHuffConstants.STORE_TREE");
+            showString("Parameter headerFormat must equal IHuffConstants.STORE_COUNTS or "
+                    + "IHuffConstants.STORE_TREE");
+            return -1;
         }
 
         BitInputStream bitIn = new BitInputStream(in);
@@ -83,12 +80,12 @@ public class SimpleHuffProcessor implements IHuffProcessor {
 
         int bitsInCompressed = BITS_PER_INT * 2;
         isTreeFormat = headerFormat == STORE_TREE;
-        bitsInCompressed += buildTree(freqs); // TODO change this into class?
+        bitsInCompressed += buildTree(freqs);
         findCodes(charFreqs.peek(), codeSequences, "");
         bitsInCompressed += isTreeFormat ? BITS_PER_INT * freqs.length : 0;
 
         // the actual data
-        for (int character : codeSequences.keySet()) { // TODO traverse through freqs instead
+        for (int character : codeSequences.keySet()) {
             if (character != ALPH_SIZE) {
                 bitsInCompressed += codeSequences.get(character).length() * freqs[character];
             }
@@ -97,18 +94,15 @@ public class SimpleHuffProcessor implements IHuffProcessor {
         bitsInCompressed += codeSequences.get(PSEUDO_EOF).length();
 
         showString((bitsInOriginal - bitsInCompressed) + " bits saved.");
-        System.out.println(bitsInOriginal + " bits in original, " + bitsInCompressed + " bits in compressed");
-        System.out.println(
-                (bitsInOriginal / 8) + " bytes in original, " + (bitsInCompressed / 8) + " bytes in compressed");
-        System.out.println((bitsInOriginal - bitsInCompressed) + " bits saved detected in SimpleHuffProcessor");
         spaceSaved = bitsInOriginal > bitsInCompressed;
-        // myViewer.update("Still not working");
         return bitsInOriginal - bitsInCompressed;
     }
 
     /**
-     *
-     * @param freqs
+     * Builds the PriorityQueue314 of characters and constructs them into a tree
+     * 
+     * @param freqs an array of ints storing the frequency of each ascii value in
+     *              the file
      * @return the number of bits required to store this tree using standard tree
      *         format
      */
@@ -122,23 +116,6 @@ public class SimpleHuffProcessor implements IHuffProcessor {
         }
         charFreqs.enqueue(new TreeNode(PSEUDO_EOF, 1)); // add PEOF to PQ
 
-        // System.out.println("\nqueue:");
-        // charFreqs.print(); // delete
-
-        // // testing (delete)
-        // int numCharacters = 0;
-        // for (int ch = 0; ch <= freqs.length; ch++) {
-        // TreeNode temp = charFreqs.dequeue();
-        // System.out.print(temp + " ");
-        // numCharacters += temp.getFrequency();
-        // }
-        // System.out.println("\nchar count by counting: " + numCharacters);
-        // // reset tree
-        // for (int ch = 0; ch < freqs.length; ch++) {
-        // charFreqs.enqueue(new TreeNode(ch, freqs[ch]));
-        // }
-        // charFreqs.enqueue(new TreeNode(PSEUDO_EOF, 1));
-
         int bitsUsed = BITS_PER_INT;
 
         // structuring completed PQ into a tree
@@ -147,40 +124,28 @@ public class SimpleHuffProcessor implements IHuffProcessor {
             TreeNode n2 = charFreqs.dequeue();
 
             if (n1.getFrequency() + n2.getFrequency() != 0) {
-                // System.out.print("\njoining nodes " + (n1.getValue() == -1 ? "?" : (char)
-                // n1.getValue())
-                // + " and " + (n2.getValue() == -1 ? "?" : (char) n2.getValue()) + ". ");
                 charFreqs.enqueue(new TreeNode(n1, -1, n2)); // add
                 bitsUsed += 1;
                 if (n1.getValue() != -1) {
                     // add bits from child 1
                     bitsUsed += BITS_PER_WORD;
-                    // System.out.print("left child stores char " + ((char) n1.getValue()) + ". ");
                 }
                 if (n2.getValue() != -1) {
                     // add bits from child 1
                     bitsUsed += BITS_PER_WORD;
-                    // System.out.print("right child stores char " + ((char) n2.getValue()) + ". ");
                 }
             }
         }
-        // System.out.println();
-
-        // System.out.println(bitsUsed - BITS_PER_INT + " bits used to store tree");
-        // printTree(charFreqs.peek(), ""); // delete
-        return isTreeFormat ? bitsUsed : 0; // TODO debug: preprocess returning wrong number of bits used for standard
-        // count format
+        return isTreeFormat ? bitsUsed : 0;
     }
 
-    // TODO delete; testing
-    private void printTree(TreeNode n, String spaces) {
-        if (n != null) {
-            printTree(n.getRight(), spaces + "     ");
-            System.out.println(spaces + n);
-            printTree(n.getLeft(), spaces + "     ");
-        }
-    }
-
+    /**
+     * Constructs Huffman codes of each character and stores in HashMap
+     * 
+     * @param n     current TreeNode
+     * @param codes HashMap to add codes to
+     * @param code  Huffman code constructed
+     */
     private void findCodes(TreeNode n, HashMap<Integer, String> codes, String code) {
         if (n != null) {
             if (n.getValue() != -1) {
@@ -213,7 +178,8 @@ public class SimpleHuffProcessor implements IHuffProcessor {
      */
     public int compress(InputStream in, OutputStream out, boolean force) throws IOException {
         if (codeSequences == null) {
-            throw new RuntimeException("preprocessCompress must be called before compress is called");
+            throw new RuntimeException("preprocessCompress must be called before compress is "
+                    + "called");
         }
 
         if (!spaceSaved && !force) {
@@ -221,102 +187,109 @@ public class SimpleHuffProcessor implements IHuffProcessor {
             return -1;
         }
 
-        // System.out.println(codeSequences);
         BitOutputStream bitsOut = new BitOutputStream(out);
-        System.out.print(Integer.toBinaryString(MAGIC_NUMBER) + " " + Integer.toBinaryString(isTreeFormat ? STORE_TREE : STORE_COUNTS) + " ");
         bitsOut.writeBits(BITS_PER_INT, MAGIC_NUMBER);
         bitsOut.writeBits(BITS_PER_INT, isTreeFormat ? STORE_TREE : STORE_COUNTS);
         int bitsWritten = BITS_PER_INT * 2; // account for writing magic # and header format val
 
-        if (isTreeFormat) {
-            // TODO write data to store tree info
-            bitsWritten += BITS_PER_INT;
-            Queue<Integer> treeBits = new LinkedList<Integer>();
-            writeTreeData(treeBits, charFreqs.peek());
-            for(int i = Integer.toBinaryString(treeBits.size()).length(); i < BITS_PER_INT; i++) {
-                System.out.print("0");
-            }
-            System.out.print(Integer.toBinaryString(treeBits.size()) + " ");
-            bitsOut.writeBits(BITS_PER_INT, treeBits.size());
-            bitsWritten += treeBits.size();
-            // System.out.println(treeBits);
-            while(!treeBits.isEmpty()) {
-                System.out.print(treeBits.peek());
-                bitsOut.writeBits(1, treeBits.remove());
-            }
-        } else {
-            // write data used to construct freq array (standard count format)
-            for (int character = 0; character < ALPH_SIZE; character++) {
-                System.out.print(Integer.toBinaryString(freqs[character]) + " ");
-                bitsOut.writeBits(BITS_PER_INT, freqs[character]);
-            }
-            // we do not need to write the freq for PEOF
-        }
+        bitsWritten += writeHeader(bitsOut);
 
         // write content
         BitInputStream bitsIn = new BitInputStream(in);
         int character = bitsIn.readBits(BITS_PER_WORD);
         while (character != -1) {
-            // System.out.println("character = " + character + ", reading " + ((char)
-            // character) + " "); // delete
             String huffCode = codeSequences.get(character);
             for (int i = 0; i < huffCode.length(); i++) {
-                System.out.print(huffCode.charAt(i) == '0' ? 0 : 1);
                 bitsOut.writeBits(1, huffCode.charAt(i) == '0' ? 0 : 1);
-                // System.out.print("" + huffCode.charAt(i));
             }
             bitsWritten += huffCode.length();
-            System.out.print(" ");
 
             character = bitsIn.readBits(BITS_PER_WORD);
         }
         bitsIn.close();
 
-        // write PEOF
-        String peofCode = codeSequences.get(ALPH_SIZE);
-        for (int i = 0; i < peofCode.length(); i++) {
-            System.out.print(peofCode.charAt(i) == '0' ? 0 : 1);
-            bitsOut.writeBits(1, peofCode.charAt(i) == '0' ? 0 : 1);
-            // System.out.print("" + peofCode.charAt(i));
-        }
-        System.out.print(" ");
-        bitsWritten += peofCode.length();
-        while (bitsWritten % BITS_PER_WORD != 0) {
-            bitsWritten++;
-            System.out.print(0);
-            bitsOut.writeBits(1, 0);
-        }
-
+        bitsWritten += writePeof(bitsOut);
         bitsOut.close();
         return bitsWritten;
     }
 
+    /**
+     * Writes PEOF and calculates the number of bits written
+     * 
+     * @param bitsOut BitOutputStream used to write the compressed file
+     * @return the number of bits written by the PEOF
+     */
+    private int writePeof(BitOutputStream bitsOut) {
+        int bitsWritten = 0;
+        String peofCode = codeSequences.get(ALPH_SIZE);
+        for (int i = 0; i < peofCode.length(); i++) {
+            bitsOut.writeBits(1, peofCode.charAt(i) == '0' ? 0 : 1);
+        }
+        bitsWritten += peofCode.length();
+        while (bitsWritten % BITS_PER_WORD != 0) {
+            bitsWritten++;
+            bitsOut.writeBits(1, 0);
+        }
+
+        return bitsWritten;
+    }
+
+    /**
+     * Writes header and calculates the number of bits written
+     * 
+     * @param bitsOut BitOutputStream used to write the compressed file
+     * @return the number of bits written by the header
+     */
+    private int writeHeader(BitOutputStream bitsOut) {
+        int bitsWritten = 0;
+        if (isTreeFormat) {
+            bitsWritten += BITS_PER_INT;
+            Queue<Integer> treeBits = new LinkedList<Integer>();
+            writeTreeData(treeBits, charFreqs.peek());
+            bitsOut.writeBits(BITS_PER_INT, treeBits.size());
+            bitsWritten += treeBits.size();
+            while (!treeBits.isEmpty()) {
+                bitsOut.writeBits(1, treeBits.remove());
+            }
+        } else {
+            // write data used to construct freq array (standard count format)
+            for (int character = 0; character < ALPH_SIZE; character++) {
+                bitsOut.writeBits(BITS_PER_INT, freqs[character]);
+            }
+            // we do not need to write the freq for PEOF
+        }
+        return bitsWritten;
+    }
+
+    /**
+     * Recursively finds the bits to write ino the compressed file
+     * 
+     * @param bits a Queue that stores the bits to be written into the compressed
+     *             file
+     * @param n    the current node
+     */
     private void writeTreeData(Queue<Integer> bits, TreeNode n) {
         if (n != null) {
             if (n.getValue() != -1) {
                 // n is a leaf
                 bits.add(1);
-                // System.out.print("1 ");
                 if (n.getValue() == PSEUDO_EOF) {
                     // n stores PEOF
                     bits.add(1);
-                    for(int i = 0; i < BITS_PER_WORD; i++) {
+                    for (int i = 0; i < BITS_PER_WORD; i++) {
                         bits.add(0);
                     }
-                    // System.out.print("100000000 ");
                 } else {
                     // n stores a character
                     bits.add(0);
                     String charAsciiAsString = Integer.toBinaryString(n.getValue());
-                    for(int i = 0; i < charAsciiAsString.length(); i++) {
+                    for (int i = 0; i < charAsciiAsString.length(); i++) {
                         bits.add(charAsciiAsString.charAt(i) - '0');
                     }
-                    // System.out.print("0" + Integer.toBinaryString(n.getValue()) + " ");
                 }
             } else {
                 // n is an internal node
                 bits.add(0);
-                // System.out.print("0 ");
                 if (n.getLeft() != null) {
                     writeTreeData(bits, n.getLeft());
                 }
@@ -324,8 +297,6 @@ public class SimpleHuffProcessor implements IHuffProcessor {
                     writeTreeData(bits, n.getRight());
                 }
             }
-        } else { // delete
-            System.out.println("n was null in writeTreeData for some reason");
         }
     }
 
@@ -341,33 +312,53 @@ public class SimpleHuffProcessor implements IHuffProcessor {
      */
     public int uncompress(InputStream in, OutputStream out) throws IOException {
         BitInputStream bitsIn = new BitInputStream(in);
-        BitOutputStream bitsOut = new BitOutputStream(out);
-        int bitsRead = 0;
+        int bitsRead = BITS_PER_INT * 2;
 
-        //reads magic number
+        // reads magic number
         int magic = bitsIn.readBits(BITS_PER_INT);
         if (magic != MAGIC_NUMBER) {
-            throw new IOException("Invalid magic number, file format not recognized.");
+            showString("Invalid magic number, file format not recognized.");
+            bitsIn.close();
+            return -1;
         }
-        bitsRead += BITS_PER_INT;
 
         // read header info
         int headerFormat = bitsIn.readBits(BITS_PER_INT);
-        bitsRead += BITS_PER_INT;
-
         TreeNode root;
         if (headerFormat == STORE_TREE) {
             root = readTree(bitsIn);
-        } else { // STORE_COUNTS
+        } else if (headerFormat == STORE_COUNTS) {
             int[] frequencies = new int[ALPH_SIZE];
             for (int i = 0; i < ALPH_SIZE; i++) {
                 frequencies[i] = bitsIn.readBits(BITS_PER_INT);
             }
-            root = rebuildHuffmanTree(frequencies);
+            buildTree(frequencies);
+            root = charFreqs.peek();
+        } else {
+            // invalid header format
+            showString("Invalid header format");
+            bitsIn.close();
+            return -1;
         }
-        int writtenBytes = 0;
+
+        bitsRead += readContent(bitsIn, out, root);
+        bitsIn.close();
+        return bitsRead;
+    }
+
+    /**
+     * 
+     * @param bitsIn BitInputStream used to read compressed file
+     * @param out    OutputStream used to write original file
+     * @param root   Root node of Huffman Tree
+     * @return number of bits read in this method
+     * @throws IOException if there is an error reading the file
+     */
+    private int readContent(BitInputStream bitsIn, OutputStream out, TreeNode root) throws IOException {
+        BitOutputStream bitsOut = new BitOutputStream(out);
         TreeNode current = root;
         int bit = bitsIn.readBits(1);
+        int bitsRead = 0;
         while (bit != -1) {
             current = (bit == 0) ? current.getLeft() : current.getRight();
 
@@ -376,17 +367,15 @@ public class SimpleHuffProcessor implements IHuffProcessor {
                     break;
                 }
                 bitsOut.writeBits(BITS_PER_WORD, current.getValue());
-                writtenBytes++;
+                bitsRead += BITS_PER_WORD;
                 current = root;
             }
 
             bit = bitsIn.readBits(1);
         }
-
-        bitsIn.close();
         bitsOut.close();
-        System.out.println(writtenBytes);
-        return writtenBytes;
+
+        return bitsRead;
     }
 
     /**
@@ -414,33 +403,18 @@ public class SimpleHuffProcessor implements IHuffProcessor {
         }
     }
 
-    private TreeNode rebuildHuffmanTree(int[] freqs) {
-        PriorityQueue314<TreeNode> pq = new PriorityQueue314<>();
-
-        for (int i = 0; i < freqs.length; i++) {
-            if (freqs[i] > 0) {
-                pq.enqueue(new TreeNode((char) i, freqs[i]));
-            }
-        }
-
-        pq.enqueue(new TreeNode(PSEUDO_EOF, 1));
-
-        System.out.println("Initial priority queue size: " + pq.size());
-
-        while (pq.size() > 1) {
-            TreeNode left = pq.dequeue();
-            TreeNode right = pq.dequeue();
-
-            pq.enqueue(new TreeNode(left, -1, right));
-
-        }
-        return pq.dequeue();
-    }
-
+    /**
+     * Sets myViewer to parameter
+     */
     public void setViewer(IHuffViewer viewer) {
         myViewer = viewer;
     }
 
+    /**
+     * Displays a string in the panel
+     * 
+     * @param s string to display
+     */
     private void showString(String s) {
         if (myViewer != null) {
             myViewer.update(s);
