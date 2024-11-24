@@ -23,6 +23,10 @@ import java.util.HashMap;
 import java.util.Queue;
 import java.util.LinkedList;
 
+/**
+ * Processes compressed and original files
+ * Compresses and reverts .hf files using Huffman Compression algorithms
+ */
 public class SimpleHuffProcessor implements IHuffProcessor {
     private IHuffViewer myViewer;
     private PriorityQueue314<TreeNode> charFreqs;
@@ -31,6 +35,9 @@ public class SimpleHuffProcessor implements IHuffProcessor {
     private boolean spaceSaved;
     private boolean isTreeFormat;
 
+    /**
+     * Default constructor for SimpleHuffProcessor
+     */
     public SimpleHuffProcessor() {
         charFreqs = new PriorityQueue314<>();
         codeSequences = new HashMap<>();
@@ -178,8 +185,7 @@ public class SimpleHuffProcessor implements IHuffProcessor {
      */
     public int compress(InputStream in, OutputStream out, boolean force) throws IOException {
         if (codeSequences == null) {
-            throw new RuntimeException("preprocessCompress must be called before compress is "
-                    + "called");
+            throw new RuntimeException("preprocessCompress must be called first");
         }
 
         if (!spaceSaved && !force) {
@@ -354,7 +360,8 @@ public class SimpleHuffProcessor implements IHuffProcessor {
      * @return number of bits read in this method
      * @throws IOException if there is an error reading the file
      */
-    private int readContent(BitInputStream bitsIn, OutputStream out, TreeNode root) throws IOException {
+    private int readContent(BitInputStream bitsIn, OutputStream out, TreeNode root)
+            throws IOException {
         BitOutputStream bitsOut = new BitOutputStream(out);
         TreeNode current = root;
         int bit = bitsIn.readBits(1);
