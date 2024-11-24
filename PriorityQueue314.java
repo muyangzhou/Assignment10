@@ -1,4 +1,22 @@
 /**
+ * Student information for assignment:
+ *
+ * On our honor, Muyang Zhou and Olivia Wang, this programming assignment is our
+ * own work
+ * and we have not provided this code to any other student.
+ *
+ * Number of slip days used: 2
+ *
+ * Student 1 (Student whose Canvas account is being used)
+ * UTEID: mz9939
+ * email address: m.zhou@utexas.edu
+ * Grader name: Diego
+ *
+ * Student 2
+ * UTEID: oyw74
+ * email address: oliviawang@utexas.edu
+ *
+ *
  * A PriorityQueue class that implements consistent placement for equivalent
  * objects
  */
@@ -32,6 +50,7 @@ public class PriorityQueue314<T extends Comparable<T>> {
 
     /**
      * Adds value to end of the queue
+     * 
      * @param value value to add to end of the queue
      */
     public void enqueue(T value) {
@@ -56,6 +75,7 @@ public class PriorityQueue314<T extends Comparable<T>> {
 
     /**
      * Retrieves and removes the value at the front of the queue
+     * 
      * @return the value at the front of the queue
      */
     public T dequeue() {
@@ -70,6 +90,7 @@ public class PriorityQueue314<T extends Comparable<T>> {
 
     /**
      * Retrives the value at the front of the queue
+     * 
      * @return the value at the front of the queue
      */
     public T peek() {
